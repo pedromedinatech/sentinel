@@ -1,4 +1,4 @@
-from shared.config import THRESHOLDS
+from shared.config import PHYSICAL_LIMITS
 
 class Validator:
     """
@@ -21,7 +21,7 @@ class Validator:
         
         sensor_type = message["sensor_type"]
 
-        if sensor_type not in THRESHOLDS:
+        if sensor_type not in PHYSICAL_LIMITS:
             return False, f"unknown sensor type: {sensor_type}"
         
         value = message["value"]
@@ -29,7 +29,7 @@ class Validator:
         if not isinstance(value, (int, float)):
             return False, f"value must be a number, got: {type(value).__name__}"
         
-        min_val, max_val = THRESHOLDS[sensor_type]
+        min_val, max_val = PHYSICAL_LIMITS[sensor_type]
 
         if not (min_val <= value <= max_val):
             return False, f"value {value} out of range [{min_val}, {max_val}]"

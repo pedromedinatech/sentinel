@@ -12,10 +12,21 @@ SECRET_HASH = hashlib.sha256(SECRET.encode()).hexdigest()
 WINDOW_SIZE = 10 # number of readings in the sliding window for z-score 
 ZSCORE_THRESHOLD = 3 # stds to flag a statistical anomaly
 
-# Thresholds on type of sensor (min, max)
-THRESHOLDS = {
+# Physical limits, enforced by Validator
+# Values outside these ranges are physically impossible
+PHYSICAL_LIMITS = {
     "cpu":     (0.0, 100.0),
     "ram":     (0.0, 100.0),
     "disk":    (0.0, 100.0),
+    "network": (0.0, float("inf")),
+}
+
+# Alert thresholds, enforced by ThresholdDetector
+# Values outside these ranges are possible but considered abnormal
+# Configured to be tweakable
+ALERT_THRESHOLDS = {
+    "cpu":     (0.0, 90.0),
+    "ram":     (0.0, 85.0),
+    "disk":    (0.0, 80.0),
     "network": (0.0, float("inf")),
 }
