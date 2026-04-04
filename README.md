@@ -12,10 +12,11 @@ when anomalies are detected.
 --- 
 
 ## Architecture
-
+```
 [Sensor Client A] ─┐
 [Sensor Client B] ─┼──► [TCP Server] ──► [Pipeline] ──► [EventBus] ──► [Monitor]
 [Sensor Client C] ─┘
+```
 
 **Server** — manages concurrent client connections using Python's `asyncio` event loop.
 Each client runs in its own coroutine, allowing the server to handle multiple sensors
@@ -61,7 +62,7 @@ authentication time. The plain text secret never touches the server's comparison
 ---
 
 ## Project Structure
-
+```
 sentinel/
 ├── server/
 │   ├── server.py           # entry point, asyncio event loop
@@ -82,7 +83,7 @@ sentinel/
     ├── config.py           # central configuration
     ├── protocol.py         # message definitions and serialization
     └── logger.py           # shared logging setup
-
+```
 --- 
 
 ## Getting Started
