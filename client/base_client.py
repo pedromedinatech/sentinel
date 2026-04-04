@@ -16,7 +16,7 @@ class BaseClient:
     def __init__(self, sensor_id: str, sensor_type: str, interval: float = 2.0):
 
         self._sensor_id = sensor_id
-        self_sensor_type = sensor_type
+        self._sensor_type = sensor_type
         self._interval = interval
         self._reader = None
         self._writer = None 

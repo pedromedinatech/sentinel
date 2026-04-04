@@ -17,7 +17,7 @@ class Registry:
         plain text secrets are never compared directly.
         """
 
-        incoming_hash = hashlib.sha3_256(secret.encode()).hexdigest()
+        incoming_hash = hashlib.sha256(secret.encode()).hexdigest()
 
         if incoming_hash != SECRET_HASH:
             logger.warning(f"authentication failed for sensor '{sensor_id}' — invalid secret")

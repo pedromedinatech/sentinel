@@ -5,7 +5,7 @@ HOST = "127.0.0.1"
 PORT = 9999
 
 #Auth
-SECRET = "5ce9d0261f3fb421a883026d15c2b41e8d817cf2e3fd15bd9ba2a8998a6b3c49"
+SECRET = "sentinel-access-2026"
 SECRET_HASH = hashlib.sha256(SECRET.encode()).hexdigest()
 
 #Pipeline
