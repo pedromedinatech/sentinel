@@ -1,4 +1,6 @@
 from typing import Callable
+import asyncio
+import inspect
 
 class EventBus:
     """
@@ -22,4 +24,7 @@ class EventBus:
         """Notify all subscribers registered for the given event type."""
 
         for callback in self._subscribers.get(event_type, []):
-            callback(data)
+            if inspect.iscoroutinefunction(callback):
+                asyncio.create_task(callback(data))
+            else:
+                callback(data)
