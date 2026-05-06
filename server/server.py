@@ -10,6 +10,7 @@ from dashboard.ws_server import WebSocketServer
 from dashboard.http_server import start as start_http   
 from dashboard.client_controller import ClientController
 from dashboard.anomaly_injector import AnomalyInjector
+from client.psutil_client import PsutilClient
 
 logger = get_logger(__name__)
 
@@ -43,6 +44,11 @@ async def main() -> None:
     ws_server = WebSocketServer(ws_manager, client_controller)
     anomaly_injector = AnomalyInjector()
 
+    cpu_client = PsutilClient(sensor_id="cpu_real", sensor_type="cpu", interval=2.0)
+    ram_client = PsutilClient(sensor_id="ram_real", sensor_type="ram", interval=2.0)
+    disk_client = PsutilClient(sensor_id="disk_real", sensor_type="disk", interval=2.0)
+    network_client = PsutilClient(sensor_id="network_real", sensor_type="network", interval=2.0)
+
     server = await asyncio.start_server(handle_client, HOST, PORT)
 
     addr = server.sockets[0].getsockname()
@@ -53,7 +59,11 @@ async def main() -> None:
             server.serve_forever(),
             ws_server.start(),
             start_http(),
-            anomaly_injector.run()
+            anomaly_injector.run(),
+            cpu_client.run(),
+            ram_client.run(),
+            disk_client.run(),
+            network_client.run()
         )
 
 
