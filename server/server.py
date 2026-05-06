@@ -5,6 +5,11 @@ from server.registry import Registry
 from server.event_bus import EventBus
 from server.client_handler import ClientHandler
 from monitor.monitor import Monitor
+from dashboard.ws_manager import WebSocketManager
+from dashboard.ws_server import WebSocketServer
+from dashboard.http_server import start as start_http   
+from dashboard.client_controller import ClientController
+from dashboard.anomaly_injector import AnomalyInjector
 
 logger = get_logger(__name__)
 
@@ -13,6 +18,11 @@ event_bus = EventBus()
 
 monitor = Monitor()
 event_bus.subscribe("anomaly", monitor.on_anomaly)
+
+ws_manager = WebSocketManager()
+event_bus.subscribe("anomaly", ws_manager.on_anomaly)
+event_bus.subscribe("reading", ws_manager.on_reading)
+event_bus.subscribe("connection", ws_manager.on_connection)
 
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     """
@@ -29,14 +39,22 @@ async def main() -> None:
     Start the server and run the event loop indefinitely.
     """
 
+    client_controller = ClientController()
+    ws_server = WebSocketServer(ws_manager, client_controller)
+    anomaly_injector = AnomalyInjector()
+
     server = await asyncio.start_server(handle_client, HOST, PORT)
 
     addr = server.sockets[0].getsockname()
     logger.info(f"sentinel server listening on {addr[0]}:{addr[1]}")
 
     async with server:
-
-        await server.serve_forever()
+        await asyncio.gather(
+            server.serve_forever(),
+            ws_server.start(),
+            start_http(),
+            anomaly_injector.run()
+        )
 
 
 if __name__ == "__main__":

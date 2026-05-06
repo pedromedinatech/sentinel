@@ -75,6 +75,13 @@ class ClientHandler:
                 protocol.make_ack(sensor_id)
             ))
             await self._writer.drain()
+
+            self._event_bus.publish("connection", {
+                "sensor_id": sensor_id,
+                "sensor_type": message.get("sensor_type", "unknown"),
+                "status": "connected"
+            })
+
             return True
 
         except asyncio.TimeoutError:
@@ -86,6 +93,7 @@ class ClientHandler:
 
     async def _process_messages(self) -> None:
         """Read and process incoming sensor readings until the client disconnects."""
+
         logger.info(f"'{self._sensor_id}' ready, waiting for readings")
 
         try:
@@ -96,6 +104,10 @@ class ClientHandler:
                 if not raw:
                     logger.info(f"'{self._sensor_id}' disconnected")
                     self._registry.remove(self._sensor_id)
+                    self._event_bus.publish("connection", {
+                        "sensor_id": self._sensor_id,
+                        "status": "disconnected"
+                    })
                     break
 
                 message = protocol.decode(raw.decode("utf-8"))
@@ -107,8 +119,12 @@ class ClientHandler:
                 await self._run_pipeline(message)
 
         except Exception as e:
-            logger.error(f"error handling '{self._sensor_id}': {e}")
+            logger.error(f"Error handling '{self._sensor_id}': {e}")
             self._registry.remove(self._sensor_id)
+            self._event_bus.publish("connection", {
+                "sensor_id": self._sensor_id,
+                "status":    "disconnected"
+            })
 
     async def _run_pipeline(self, message: dict) -> None:
         """
@@ -135,4 +151,5 @@ class ClientHandler:
             self._event_bus.publish("anomaly", {**message, "reason": reason, "stage": "zscore"})
             return
 
+        self._event_bus.publish("reading", {**message})
         logger.debug(f"'{self._sensor_id}' reading OK: {message['value']}")
