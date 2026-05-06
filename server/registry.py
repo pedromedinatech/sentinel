@@ -13,14 +13,14 @@ class Registry:
     def authenticate(self, sensor_id: str, secret: str) -> bool:
         """
         Verify the shared secret and register the sensor if valid.
-        The incoming secret is hashed and compared against the stored hash —
+        The incoming secret is hashed and compared against the stored hash,
         plain text secrets are never compared directly.
         """
 
         incoming_hash = hashlib.sha256(secret.encode()).hexdigest()
 
         if incoming_hash != SECRET_HASH:
-            logger.warning(f"authentication failed for sensor '{sensor_id}' — invalid secret")
+            logger.warning(f"authentication failed for sensor '{sensor_id}', invalid secret")
             return False
         
         self._sensors[sensor_id] = {"sensor_id": sensor_id}

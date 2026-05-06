@@ -33,7 +33,7 @@ class ClientHandler:
         logger.info(f"New connection from {addr}")
 
     async def handle(self) -> None:
-        """Main entry point — authenticate then process incoming messages."""
+        """Main entry point, authenticate then process incoming messages."""
 
         authenticated = await self._authenticate()
         if not authenticated:
@@ -53,7 +53,7 @@ class ClientHandler:
             message = protocol.decode(raw.decode("utf-8"))
 
             if message.get("type") != protocol.MSG_REGISTER:
-                logger.warning("First message was not a register — rejecting")
+                logger.warning("First message was not a register, rejecting")
                 self._writer.write(protocol.encode(
                     protocol.make_rejected("first message must be a registration")
                 ))

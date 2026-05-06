@@ -52,5 +52,5 @@ class ZScoreDetector:
             return False, reason
         
         window.append(value)
-        logger.debug(f"'{sensor_id}' z={z:.2f} — normal")
+        logger.debug(f"'{sensor_id}' z={z:.2f} normal")
         return True, ""

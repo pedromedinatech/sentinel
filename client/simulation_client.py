@@ -21,8 +21,8 @@ class SimulationClient(BaseClient):
         self._inject_anomaly = inject_anomaly
 
         logger.info(
-            f"'{sensor_id}' initialized as simulated {sensor_type} sensor "
-            f"— anomaly injection: {'ON' if inject_anomaly else 'OFF'}"
+            f"'{sensor_id}' initialized as simulated {sensor_type} sensor, "
+            f"anomaly injection: {'ON' if inject_anomaly else 'OFF'}"
         )
 
     def collect(self) -> float:

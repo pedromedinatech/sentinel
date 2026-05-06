@@ -18,20 +18,20 @@ when anomalies are detected.
 [Sensor Client C] ─┘
 ```
 
-**Server** — manages concurrent client connections using Python's `asyncio` event loop.
+**Server** - manages concurrent client connections using Python's `asyncio` event loop.
 Each client runs in its own coroutine, allowing the server to handle multiple sensors
 simultaneously without threads.
 
-**Pipeline** — every incoming reading passes through three sequential stages:
-1. `Validator` — rejects malformed messages and physically impossible values
-2. `ThresholdDetector` — flags values that exceed configurable alert thresholds
-3. `ZScoreDetector` — detects statistical anomalies using a sliding window Z-score
+**Pipeline** - every incoming reading passes through three sequential stages:
+1. `Validator`: rejects malformed messages and physically impossible values
+2. `ThresholdDetector`: flags values that exceed configurable alert thresholds
+3. `ZScoreDetector`: detects statistical anomalies using a sliding window Z-score
 
-**EventBus** — implements the Observer pattern. When the pipeline flags an anomaly,
+**EventBus** - implements the Observer pattern. When the pipeline flags an anomaly,
 the server publishes an event to the bus. Any number of subscribers can react to it
 independently, without the server knowing who they are.
 
-**Monitor** — a subscriber that receives anomaly events and logs structured alerts.
+**Monitor** - a subscriber that receives anomaly events and logs structured alerts.
 
 ---
 
@@ -70,9 +70,9 @@ sentinel/
 │   ├── registry.py         # in-memory authenticated sensor registry
 │   ├── event_bus.py        # observer pattern implementation
 │   └── pipeline/
-│       ├── validator.py    # stage 1 — schema and physical limits
-│       ├── threshold.py    # stage 2 — configurable alert thresholds
-│       └── zscore.py       # stage 3 — sliding window Z-score
+│       ├── validator.py    # stage 1 - schema and physical limits
+│       ├── threshold.py    # stage 2 - configurable alert thresholds
+│       └── zscore.py       # stage 3 - sliding window Z-score
 ├── client/
 │   ├── base_client.py      # shared connection and handshake logic
 │   ├── psutil_client.py    # real system metrics via psutil
