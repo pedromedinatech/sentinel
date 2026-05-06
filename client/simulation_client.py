@@ -52,9 +52,9 @@ if __name__ == "__main__":
     # Usage: python -m client.simulation_client <sensor_id> <sensor_type> [inject]
     # Example: python -m client.simulation_client cpu_sim cpu inject
     
-    sensor_id   = sys.argv[1] if len(sys.argv) > 1 else "sim_01"
+    sensor_id = sys.argv[1] if len(sys.argv) > 1 else "sim_01"
     sensor_type = sys.argv[2] if len(sys.argv) > 2 else "cpu"
-    inject      = len(sys.argv) > 3 and sys.argv[3] == "inject"
+    inject = len(sys.argv) > 3 and sys.argv[3] == "inject"
 
     client = SimulationClient(
         sensor_id=sensor_id,
