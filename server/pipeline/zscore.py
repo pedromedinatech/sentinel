@@ -1,6 +1,6 @@
 from collections import deque
 from statistics import mean, stdev
-from shared.config import WINDOW_SIZE, ZSCORE_THRESHOLD
+from shared.config import WINDOW_SIZE, ZSCORE_THRESHOLD, ZSCORE_EXCLUDED
 from shared.logger import get_logger
 
 logger = get_logger(__name__)
@@ -22,7 +22,9 @@ class ZScoreDetector:
         Returns (True, "") if normal, or (False, reason) if anomalous.
         At least 2 readings are required before Z-score can be calculated.
         """
-
+        if message.get("sensor_type") in ZSCORE_EXCLUDED:
+            return True, ""
+        
         sensor_id = message["sensor_id"]
         value = message["value"]
 
