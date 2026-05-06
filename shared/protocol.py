@@ -16,13 +16,14 @@ def decode(raw: bytes) -> dict:
 
     return json.loads(raw.strip())
 
-def make_register(sensor_id: str, secret: str) -> dict:
+def make_register(sensor_id: str, secret: str, sensor_type: str) -> dict:
     """Build a registration handshake message."""
 
     return {
         "type": MSG_REGISTER,
         "sensor_id": sensor_id,
         "secret": secret,
+        "sensor_type": sensor_type,
     }
 
 def make_reading(sensor_id: str, sensor_type: str, value: float, timestamp: float) -> dict:

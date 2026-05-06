@@ -33,7 +33,7 @@ class BaseClient:
 
             # send registration handshake
             self._writer.write(protocol.encode(
-                protocol.make_register(self._sensor_id, SECRET)
+                protocol.make_register(self._sensor_id, SECRET, self._sensor_type)
             ))
             await self._writer.drain()
 
