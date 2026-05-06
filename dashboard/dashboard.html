@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sentinel</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                fontFamily: { mono: ["JetBrains Mono", "monospace"] }
+            }
+        }
+    }
+</script>
+<style>
+    * { font-family: "JetBrains Mono", monospace; }
+    body { background: #0a0a0a; color: #e0e0e0; overflow: hidden; }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; }
+
+    .bg-0 { background: #0a0a0a; }
+    .bg-1 { background: #111111; }
+    .bg-2 { background: #181818; }
+    .border-subtle { border-color: #1e1e1e; }
+
+    .pulse-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: #22c55e;
+        animation: pulse 2s infinite;
+        flex-shrink: 0;
+    }
+    .pulse-dot.inactive { background: #333; animation: none; }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .stage-tag {
+        padding: 1px 6px;
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border: 1px solid;
+    }
+    .stage-validator  { color: #ef4444; background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25); }
+    .stage-threshold  { color: #f97316; background: rgba(249,115,22,0.08); border-color: rgba(249,115,22,0.25); }
+    .stage-zscore     { color: #eab308; background: rgba(234,179,8,0.08);  border-color: rgba(234,179,8,0.25); }
+
+    .feed-row {
+        display: flex;
+        align-items: center;
+        padding: 7px 16px;
+        border-left: 2px solid;
+        font-size: 11px;
+        border-bottom: 1px solid #1a1a1a;
+        transition: background 0.1s;
+    }
+    .feed-row:hover { background: #161616; }
+    .feed-row.validator { border-left-color: #ef4444; }
+    .feed-row.threshold { border-left-color: #f97316; }
+    .feed-row.zscore    { border-left-color: #eab308; }
+
+    .metric-value { font-size: 22px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+    .metric-label { font-size: 9px; color: #4a4a4a; letter-spacing: 0.08em; margin-top: 3px; }
+
+    .value-green  { color: #22c55e; }
+    .value-yellow { color: #eab308; }
+    .value-red    { color: #ef4444; }
+
+    .nav-item {
+        display: flex; align-items: center;
+        padding: 8px 16px;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: #4a4a4a;
+        border-left: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.1s;
+        text-transform: uppercase;
+    }
+    .nav-item:hover { color: #e0e0e0; background: #131313; border-left-color: #2a2a2a; }
+    .nav-item.active { color: #e0e0e0; background: #131313; border-left-color: #3b82f6; }
+
+    .chart-container { position: relative; width: 100%; height: 100%; }
+
+    .btn-primary {
+        background: #1a2a3a;
+        color: #3b82f6;
+        border: 1px solid #1e3a5f;
+        padding: 7px 12px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.1s;
+        width: 100%;
+    }
+    .btn-primary:hover { background: #1e3348; border-color: #2a4a6f; }
+
+    .btn-danger {
+        background: #2a1010;
+        color: #ef4444;
+        border: 1px solid #3a1515;
+        padding: 7px 12px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.1s;
+        width: 100%;
+    }
+    .btn-danger:hover { background: #331515; }
+
+    .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.7);
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+        background: #111;
+        border: 1px solid #222;
+        padding: 24px;
+        width: 320px;
+    }
+
+    select, option {
+        background: #111;
+        color: #e0e0e0;
+        border: 1px solid #222;
+        padding: 6px 8px;
+        font-size: 11px;
+        font-family: "JetBrains Mono", monospace;
+        width: 100%;
+        text-transform: uppercase;
+    }
+
+    .checkbox-label {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 11px; color: #6a6a6a;
+        cursor: pointer; text-transform: uppercase;
+    }
+    input[type="checkbox"] { accent-color: #3b82f6; }
+
+    .ws-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; flex-shrink: 0; }
+    .ws-dot.connected { background: #22c55e; }
+
+    .chart-panel {
+        background: #111;
+        border: 1px solid #1e1e1e;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .chart-header {
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 12px;
+        border-bottom: 1px solid #1e1e1e;
+        font-size: 10px;
+        color: #4a4a4a;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 8px;
+        padding: 8px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #2a2a2a;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        gap: 8px;
+    }
+</style>
+</head>
+<body class="h-screen flex flex-col">
+
+<!-- top bar -->
+<header style="height:48px; background:#0a0a0a; border-bottom:1px solid #1a1a1a; flex-shrink:0;"
+        class="flex items-center justify-between px-4 z-50">
+    <span style="font-size:13px; font-weight:700; letter-spacing:0.05em; color:#e0e0e0;">SENTINEL</span>
+    <div class="flex items-center gap-6">
+        <div class="flex items-center gap-2">
+            <div class="ws-dot" id="ws-dot"></div>
+            <span style="font-size:10px; letter-spacing:0.08em; color:#4a4a4a;" id="ws-label">WS_DISCONNECTED</span>
+        </div>
+        <div class="flex items-center gap-4" style="font-size:10px; letter-spacing:0.08em; color:#4a4a4a;">
+            <span>READINGS: <span id="reading-count" style="color:#e0e0e0;">0</span></span>
+            <span>ANOMALIES: <span id="anomaly-count" style="color:#ef4444;">0</span></span>
+        </div>
+    </div>
+</header>
+
+<div class="flex" style="height: calc(100vh - 48px); overflow:hidden;">
+
+    <!-- left nav -->
+    <nav style="width:160px; flex-shrink:0; background:#0a0a0a; border-right:1px solid #1a1a1a; padding-top:16px;">
+        <div class="nav-item active">NODES</div>
+        <div class="nav-item">TELEMETRY</div>
+        <div class="nav-item">LOG STREAM</div>
+        <div class="nav-item">PIPELINES</div>
+        <div class="nav-item">ALERTS</div>
+    </nav>
+
+    <!-- sensor panel -->
+    <div style="width:260px; flex-shrink:0; background:#0a0a0a; border-right:1px solid #1a1a1a; display:flex; flex-direction:column;">
+
+        <!-- header -->
+        <div style="padding:12px 16px; border-bottom:1px solid #1a1a1a;">
+            <div style="font-size:10px; color:#4a4a4a; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:4px;">SENSOR_NET</div>
+            <div style="font-size:11px; color:#3b82f6; letter-spacing:0.05em;">
+                NODES_ONLINE: <span id="nodes-count">0</span>
+            </div>
+        </div>
+
+        <!-- sensor list -->
+        <div style="flex:1; overflow-y:auto; padding:12px 0;">
+            <div style="font-size:9px; color:#333; letter-spacing:0.1em; text-transform:uppercase; padding:0 16px 8px;">ACTIVE_SENSORS</div>
+            <div id="sensor-list">
+                <div class="empty-state" style="height:80px; font-size:10px;">NO SENSORS</div>
+            </div>
+        </div>
+
+        <!-- metrics -->
+        <div style="border-top:1px solid #1a1a1a; padding:16px;">
+            <div style="font-size:9px; color:#333; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:12px;">CURRENT_METRICS</div>
+            <div id="metrics-display" style="display:flex; flex-direction:column; gap:12px;">
+                <div class="empty-state" style="height:60px; font-size:10px;">NO DATA</div>
+            </div>
+        </div>
+
+        <!-- controls -->
+        <div style="border-top:1px solid #1a1a1a; padding:12px; display:flex; flex-direction:column; gap:8px;">
+            <button class="btn-primary" onclick="openModal()">+ START SENSOR</button>
+            <button class="btn-danger" onclick="openStopModal()">STOP SENSOR</button>
+        </div>
+    </div>
+
+    <!-- main panel -->
+    <main style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+
+        <!-- CHARTS -->
+        <div style="flex:0.6; border-bottom:1px solid #1a1a1a; overflow:hidden; position:relative;">
+            <div style="position:absolute; top:8px; left:12px; font-size:9px; color:#333; letter-spacing:0.1em; text-transform:uppercase; z-index:1;">LIVE_TELEMETRY</div>
+            <div class="charts-grid" id="charts-grid" style="padding-top:28px;">
+                <div class="empty-state">
+                    <span>AWAITING SENSOR DATA</span>
+                    <span style="font-size:9px; color:#222;">START A SENSOR TO BEGIN</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- anomaly feed -->
+        <div style="flex:0.4; display:flex; flex-direction:column; overflow:hidden;">
+            <div style="height:32px; flex-shrink:0; border-bottom:1px solid #1a1a1a; display:flex; align-items:center; padding:0 16px; gap:16px;">
+                <span style="font-size:9px; color:#4a4a4a; letter-spacing:0.1em; text-transform:uppercase;">ANOMALY_FEED</span>
+                <span style="font-size:9px; color:#333; letter-spacing:0.08em;">MAX 50 ENTRIES</span>
+            </div>
+
+            <!-- feed header -->
+            <div style="display:flex; padding:6px 16px; background:#0d0d0d; border-bottom:1px solid #1a1a1a; font-size:9px; color:#333; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0;">
+                <div style="width:18%;">TIMESTAMP</div>
+                <div style="width:18%;">SENSOR_ID</div>
+                <div style="width:12%;">VALUE</div>
+                <div style="width:16%;">STAGE</div>
+                <div style="flex:1;">REASON</div>
+            </div>
+
+            <div id="anomaly-feed" style="flex:1; overflow-y:auto;">
+                <div class="empty-state">NO ANOMALIES DETECTED</div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- footer -->
+<footer style="height:28px; background:#0a0a0a; border-top:1px solid #1a1a1a; display:flex; align-items:center; justify-content:space-between; padding:0 16px; font-size:9px; color:#2a2a2a; letter-spacing:0.08em; flex-shrink:0; text-transform:uppercase;">
+    <span>SENTINEL MONITORING SYSTEM</span>
+    <div class="flex gap-4">
+        <span id="footer-status">STATUS: OFFLINE</span>
+        <span id="footer-uptime">UPTIME: 0s</span>
+    </div>
+</footer>
+
+<!-- start sensor modals -->
+<div class="modal-overlay" id="start-modal">
+    <div class="modal">
+        <div style="font-size:11px; color:#4a4a4a; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:16px;">START SENSOR CLIENT</div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <div style="font-size:9px; color:#333; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px;">SENSOR TYPE</div>
+                <select id="sensor-type-select">
+                    <option value="cpu">CPU</option>
+                    <option value="ram">RAM</option>
+                    <option value="disk">DISK</option>
+                    <option value="network">NETWORK</option>
+                </select>
+            </div>
+            <label class="checkbox-label">
+                <input type="checkbox" id="inject-anomaly-check"/>
+                INJECT ANOMALIES
+            </label>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn-primary" onclick="startSensor()">DEPLOY</button>
+                <button class="btn-danger" onclick="closeModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- stop sensor modals -->
+<div class="modal-overlay" id="stop-modal">
+    <div class="modal">
+        <div style="font-size:11px; color:#4a4a4a; letter-spacing:0.08em; text-transform:uppercase; margin-bottom:16px;">STOP SENSOR CLIENT</div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <div style="font-size:9px; color:#333; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px;">SELECT SENSOR</div>
+                <select id="stop-sensor-select">
+                    <option value="">NO ACTIVE SENSORS</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn-danger" onclick="stopSensor()">STOP</button>
+                <button class="btn-primary" onclick="closeStopModal()">CANCEL</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const state = {
+    sensors: {},
+    charts: {},
+    anomalyCount: 0,
+    readingCount: 0,
+    startTime: Date.now(),
+    activeSensorIds: []
+}
+
+const WS_URL = "ws://localhost:8765"
+const MAX_FEED = 50
+const MAX_PTS = 30
+
+// Alert thresholds — must match config.py
+const ALERT_THRESHOLDS = {
+    cpu:     [0, 90],
+    ram:     [0, 85],
+    disk:    [0, 80],
+    network: [0, Infinity]
+}
+
+let ws = null
+
+function connect() {
+    ws = new WebSocket(WS_URL)
+
+    ws.onopen = () => {
+        setWsStatus(true)
+        document.getElementById("footer-status").textContent = "STATUS: ONLINE"
+    }
+
+    ws.onclose = () => {
+        setWsStatus(false)
+        document.getElementById("footer-status").textContent = "STATUS: RECONNECTING"
+        setTimeout(connect, 3000)
+    }
+
+    ws.onerror = () => ws.close()
+
+    ws.onmessage = (e) => {
+        try {
+            const data = JSON.parse(e.data)
+            if (data.event === "reading")    handleReading(data)
+            if (data.event === "anomaly")    handleAnomaly(data)
+            if (data.event === "connection") handleConnection(data)
+        } catch(_) {}
+    }
+}
+
+function setWsStatus(connected) {
+    const dot = document.getElementById("ws-dot")
+    const label = document.getElementById("ws-label")
+    if (connected) {
+        dot.classList.add("connected")
+        label.textContent = "WS_CONNECTED"
+        label.style.color = "#22c55e"
+    } else {
+        dot.classList.remove("connected")
+        label.textContent = "WS_DISCONNECTED"
+        label.style.color = "#4a4a4a"
+    }
+}
+
+function handleConnection(data) {
+    const { sensor_id, sensor_type, status } = data
+
+    if (status === "connected") {
+        state.sensors[sensor_id] = {
+            type: sensor_type || "unknown",
+            lastValue: null,
+            lastUpdate: Date.now()
+        }
+        ensureChart(sensor_id, sensor_type)
+    } else {
+        delete state.sensors[sensor_id]
+        removeChart(sensor_id)
+    }
+
+    updateSensorList()
+    updateNodesCount()
+}
+
+function handleReading(data) {
+    const { sensor_id, sensor_type, value, timestamp } = data
+
+    // ensure sensor exists in state
+    if (!state.sensors[sensor_id]) {
+        state.sensors[sensor_id] = { type: sensor_type, lastValue: null, lastUpdate: Date.now() }
+        ensureChart(sensor_id, sensor_type)
+        updateSensorList()
+        updateNodesCount()
+    }
+
+    state.sensors[sensor_id].lastValue = value
+    state.sensors[sensor_id].lastUpdate = Date.now()
+    state.readingCount++
+    document.getElementById("reading-count").textContent = state.readingCount
+
+    updateSensorRow(sensor_id, value, sensor_type)
+    updateMetrics(sensor_id, sensor_type, value)
+    pushChartPoint(sensor_id, value, timestamp, false)
+}
+
+function handleAnomaly(data) {
+    const { sensor_id, sensor_type, value, stage, reason, timestamp } = data
+
+    state.anomalyCount++
+    document.getElementById("anomaly-count").textContent = state.anomalyCount
+
+    pushChartPoint(sensor_id, value, timestamp, true)
+    addFeedRow({ sensor_id, sensor_type, value, stage, reason, timestamp })
+}
+
+function updateSensorList() {
+    const list = document.getElementById("sensor-list")
+    const ids = Object.keys(state.sensors)
+
+    if (ids.length === 0) {
+        list.innerHTML = `<div class="empty-state" style="height:80px;font-size:10px;">NO SENSORS</div>`
+        return
+    }
+
+    list.innerHTML = ids.map(id => {
+        const s = state.sensors[id]
+        const val = s.lastValue !== null ? formatValue(s.lastValue, s.type) : "..."
+        const color = getValueColor(s.lastValue, s.type)
+        return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 16px;font-size:11px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <div class="pulse-dot"></div>
+                <span style="color:#e0e0e0;">${id.toUpperCase()}</span>
+            </div>
+            <span style="color:${color};font-weight:600;" id="sval-${id}">${val}</span>
+        </div>`
+    }).join("")
+}
+
+function updateSensorRow(sensor_id, value, type) {
+    const el = document.getElementById(`sval-${sensor_id}`)
+    if (!el) { updateSensorList(); return }
+    el.textContent = formatValue(value, type)
+    el.style.color = getValueColor(value, type)
+}
+
+function updateNodesCount() {
+    document.getElementById("nodes-count").textContent = Object.keys(state.sensors).length
+}
+
+function updateMetrics(sensor_id, type, value) {
+    const display = document.getElementById("metrics-display")
+    const elId = `metric-${sensor_id}`
+    let el = document.getElementById(elId)
+
+    if (!el) {
+        el = document.createElement("div")
+        el.id = elId
+        // remove empty state if present
+        const empty = display.querySelector(".empty-state")
+        if (empty) empty.remove()
+        display.appendChild(el)
+    }
+
+    const color = getValueColor(value, type)
+    el.innerHTML = `
+        <div>
+            <div class="metric-value" style="color:${color};">${formatValue(value, type)}</div>
+            <div class="metric-label">${sensor_id.toUpperCase()}_${type.toUpperCase()}</div>
+        </div>`
+}
+
+function ensureChart(sensor_id, sensor_type) {
+    if (state.charts[sensor_id]) return
+
+    const grid = document.getElementById("charts-grid")
+
+    // remove empty state
+    const empty = grid.querySelector(".empty-state")
+    if (empty) empty.remove()
+
+    const panel = document.createElement("div")
+    panel.className = "chart-panel"
+    panel.id = `panel-${sensor_id}`
+    panel.style.height = "200px"
+
+    const threshold = ALERT_THRESHOLDS[sensor_type] || [0, 100]
+    const thresholdVal = threshold[1] === Infinity ? null : threshold[1]
+
+    panel.innerHTML = `
+        <div class="chart-header">
+            <span>${sensor_id.toUpperCase()} [${sensor_type.toUpperCase()}]</span>
+            ${thresholdVal ? `<span style="color:#ef4444;">LIMIT: ${thresholdVal}</span>` : ""}
+        </div>
+        <div style="flex:1;padding:8px;position:relative;">
+            <canvas id="chart-${sensor_id}"></canvas>
+        </div>`
+
+    grid.appendChild(panel)
+
+    const ctx = document.getElementById(`chart-${sensor_id}`).getContext("2d")
+
+    const annotations = {}
+    if (thresholdVal !== null) {
+        annotations.threshold = {
+            type: "line",
+            yMin: thresholdVal,
+            yMax: thresholdVal,
+            borderColor: "rgba(239,68,68,0.5)",
+            borderWidth: 1,
+            borderDash: [4, 4]
+        }
+    }
+
+    state.charts[sensor_id] = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                data: [],
+                borderColor: "#3b82f6",
+                borderWidth: 1.5,
+                tension: 0.4,
+                fill: true,
+                backgroundColor: "rgba(59,130,246,0.05)",
+                pointRadius: [],
+                pointBackgroundColor: [],
+                pointBorderColor: []
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 200 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: "#111",
+                    borderColor: "#222",
+                    borderWidth: 1,
+                    titleColor: "#4a4a4a",
+                    bodyColor: "#e0e0e0",
+                    titleFont: { family: "JetBrains Mono", size: 10 },
+                    bodyFont: { family: "JetBrains Mono", size: 11 }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    ticks: { color: "#2a2a2a", font: { family: "JetBrains Mono", size: 9 }, maxTicksLimit: 6 },
+                    grid: { color: "#161616" }
+                },
+                y: {
+                    display: true,
+                    ticks: { color: "#2a2a2a", font: { family: "JetBrains Mono", size: 9 }, maxTicksLimit: 5 },
+                    grid: { color: "#161616" }
+                }
+            }
+        }
+    })
+}
+
+function pushChartPoint(sensor_id, value, timestamp, isAnomaly) {
+    const chart = state.charts[sensor_id]
+    if (!chart) return
+
+    const ds = chart.data.datasets[0]
+    const label = formatTime(timestamp)
+
+    chart.data.labels.push(label)
+    ds.data.push(value)
+    ds.pointRadius.push(isAnomaly ? 5 : 2)
+    ds.pointBackgroundColor.push(isAnomaly ? "#ef4444" : "#3b82f6")
+    ds.pointBorderColor.push(isAnomaly ? "#ef4444" : "#3b82f6")
+
+    // sliding window
+    if (chart.data.labels.length > MAX_PTS) {
+        chart.data.labels.shift()
+        ds.data.shift()
+        ds.pointRadius.shift()
+        ds.pointBackgroundColor.shift()
+        ds.pointBorderColor.shift()
+    }
+
+    chart.update()
+}
+
+function removeChart(sensor_id) {
+    const chart = state.charts[sensor_id]
+    if (chart) { chart.destroy(); delete state.charts[sensor_id] }
+
+    const panel = document.getElementById(`panel-${sensor_id}`)
+    if (panel) panel.remove()
+
+    const metric = document.getElementById(`metric-${sensor_id}`)
+    if (metric) metric.remove()
+
+    const grid = document.getElementById("charts-grid")
+    if (grid.children.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><span>AWAITING SENSOR DATA</span><span style="font-size:9px;color:#222;">START A SENSOR TO BEGIN</span></div>`
+    }
+
+    const metricsDisplay = document.getElementById("metrics-display")
+    if (metricsDisplay.children.length === 0) {
+        metricsDisplay.innerHTML = `<div class="empty-state" style="height:60px;font-size:10px;">NO DATA</div>`
+    }
+}
+
+function addFeedRow(data) {
+    const { sensor_id, value, stage, reason, timestamp } = data
+    const feed = document.getElementById("anomaly-feed")
+
+    // remove empty state
+    const empty = feed.querySelector(".empty-state")
+    if (empty) empty.remove()
+
+    const stageClass = stage || "validator"
+    const color = { validator: "#ef4444", threshold: "#f97316", zscore: "#eab308" }[stageClass] || "#ef4444"
+    const ts = formatTime(timestamp)
+
+    const row = document.createElement("div")
+    row.className = `feed-row ${stageClass}`
+    row.innerHTML = `
+        <div style="width:18%;color:#3a3a3a;">${ts}</div>
+        <div style="width:18%;color:#e0e0e0;">${(sensor_id || "").toUpperCase()}</div>
+        <div style="width:12%;color:#e0e0e0;font-weight:600;">${formatValue(value, data.sensor_type)}</div>
+        <div style="width:16%;"><span class="stage-tag stage-${stageClass}">${stageClass.toUpperCase()}</span></div>
+        <div style="flex:1;color:#3a3a3a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;">${(reason || "").toUpperCase()}</div>`
+
+    feed.insertBefore(row, feed.firstChild)
+
+    // max 50 rows
+    while (feed.children.length > MAX_FEED) {
+        feed.removeChild(feed.lastChild)
+    }
+}
+
+function openModal() {
+    document.getElementById("start-modal").classList.add("open")
+}
+function closeModal() {
+    document.getElementById("start-modal").classList.remove("open")
+}
+
+function openStopModal() {
+    const select = document.getElementById("stop-sensor-select")
+    select.innerHTML = state.activeSensorIds.length === 0
+        ? `<option value="">NO ACTIVE SENSORS</option>`
+        : state.activeSensorIds.map(id => `<option value="${id}">${id.toUpperCase()}</option>`).join("")
+    document.getElementById("stop-modal").classList.add("open")
+}
+function closeStopModal() {
+    document.getElementById("stop-modal").classList.remove("open")
+}
+
+function startSensor() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    const type = document.getElementById("sensor-type-select").value
+    const inject = document.getElementById("inject-anomaly-check").checked
+
+    ws.send(JSON.stringify({ command: "start_client", sensor_type: type, inject }))
+
+    // track locally for stop dropdown
+    const count = state.activeSensorIds.filter(id => id.startsWith(type)).length + 1
+    state.activeSensorIds.push(`${type}_sim_${count}`)
+
+    closeModal()
+}
+
+function stopSensor() {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return
+    const sensor_id = document.getElementById("stop-sensor-select").value
+    if (!sensor_id) return
+
+    ws.send(JSON.stringify({ command: "stop_client", sensor_id }))
+    state.activeSensorIds = state.activeSensorIds.filter(id => id !== sensor_id)
+    closeStopModal()
+}
+
+function formatValue(value, type) {
+    if (value === null || value === undefined) return "..."
+    if (type === "network") {
+        if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}GB`
+        if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}MB`
+        if (value >= 1_000) return `${(value / 1_000).toFixed(1)}KB`
+        return `${Math.round(value)}B`
+    }
+    return `${Number(value).toFixed(1)}%`
+}
+
+function formatTime(timestamp) {
+    if (!timestamp) return new Date().toLocaleTimeString("en-GB", { hour12: false })
+    const d = new Date(timestamp * 1000)
+    return d.toLocaleTimeString("en-GB", { hour12: false })
+}
+
+function getValueColor(value, type) {
+    if (value === null || value === undefined) return "#4a4a4a"
+    if (type === "network") return "#22c55e"
+    const [, max] = ALERT_THRESHOLDS[type] || [0, 100]
+    if (value >= max)          return "#ef4444"
+    if (value >= max * 0.6)    return "#eab308"
+    return "#22c55e"
+}
+
+setInterval(() => {
+    const secs = Math.floor((Date.now() - state.startTime) / 1000)
+    const h = Math.floor(secs / 3600)
+    const m = Math.floor((secs % 3600) / 60)
+    const s = secs % 60
+    const pad = n => String(n).padStart(2, "0")
+    document.getElementById("footer-uptime").textContent = `UPTIME: ${pad(h)}:${pad(m)}:${pad(s)}`
+}, 1000)
+
+document.querySelectorAll(".nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+        document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"))
+        item.classList.add("active")
+    })
+})
+
+connect()
+</script>
+</body>
+</html>
