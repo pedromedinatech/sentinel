@@ -64,6 +64,7 @@ The dashboard needs to receive data continuously without polling. WebSockets pro
 a persistent bidirectional connection, because the server pushes events to the browser the
 moment they occur, with no request-response overhead. The WebSocket manager is simply
 another EventBus subscriber, requiring no changes to the server or pipeline.
+
 ---
 
 ## Project Structure
@@ -119,7 +120,7 @@ pip install -r requirements.txt
 
 ## Running the system
 
-A single command starts everything — the TCP server, WebSocket server, HTTP server,
+A single command starts everything, the TCP server, WebSocket server, HTTP server,
 four real sensor clients and the automatic anomaly injector:
 
 ```bash
