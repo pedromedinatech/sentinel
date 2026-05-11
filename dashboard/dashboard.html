@@ -226,11 +226,8 @@
 
     <!-- left nav -->
     <nav style="width:160px; flex-shrink:0; background:#0a0a0a; border-right:1px solid #1a1a1a; padding-top:16px;">
-        <div class="nav-item active">NODES</div>
-        <div class="nav-item">TELEMETRY</div>
-        <div class="nav-item">LOG STREAM</div>
-        <div class="nav-item">PIPELINES</div>
-        <div class="nav-item">ALERTS</div>
+        <div class="nav-item active" onclick="showSection('nodes')">NODES</div>
+        <div class="nav-item" onclick="showSection('alerts')">ALERTS</div>
     </nav>
 
     <!-- sensor panel -->
@@ -372,7 +369,6 @@ const WS_URL = "ws://localhost:8765"
 const MAX_FEED = 50
 const MAX_PTS = 30
 
-// Alert thresholds — must match config.py
 const ALERT_THRESHOLDS = {
     cpu:     [0, 90],
     ram:     [0, 85],
@@ -419,6 +415,23 @@ function setWsStatus(connected) {
         dot.classList.remove("connected")
         label.textContent = "WS_DISCONNECTED"
         label.style.color = "#4a4a4a"
+    }
+}
+
+function showSection(section) {
+    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"))
+    event.target.classList.add("active")
+
+    const chartsSection = document.querySelector("main > div:first-child")
+    const feedSection   = document.querySelector("main > div:last-child")
+
+    if (section === "nodes") {
+        chartsSection.style.flex = "0.6"
+        chartsSection.style.display = "flex"
+        feedSection.style.flex = "0.4"
+    } else if (section === "alerts") {
+        chartsSection.style.display = "none"
+        feedSection.style.flex = "1"
     }
 }
 
