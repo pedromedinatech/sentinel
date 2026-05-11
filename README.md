@@ -59,6 +59,11 @@ Even in a non-production context, storing plain text secrets in source code is p
 practice. The server stores a SHA-256 hash of the secret and compares hashes at
 authentication time. The plain text secret never touches the server's comparison logic.
 
+**Why WebSockets for the dashboard?**
+The dashboard needs to receive data continuously without polling. WebSockets provide
+a persistent bidirectional connection, because the server pushes events to the browser the
+moment they occur, with no request-response overhead. The WebSocket manager is simply
+another EventBus subscriber, requiring no changes to the server or pipeline.
 ---
 
 ## Project Structure
@@ -79,6 +84,13 @@ sentinel/
 │   └── simulation_client.py # configurable simulated readings
 ├── monitor/
 │   └── monitor.py          # anomaly event subscriber
+├── dashboard/
+│   ├── dashboard.html      # real-time web dashboard
+│   ├── ws_manager.py       # WebSocket manager, EventBus subscriber
+│   ├── ws_server.py        # WebSocket server on port 8765
+│   ├── http_server.py      # static HTTP server on port 8080
+│   ├── client_controller.py # manages simulated clients from dashboard
+│   └── anomaly_injector.py  # automatic anomaly injection at random intervals
 └── shared/
     ├── config.py           # central configuration
     ├── protocol.py         # message definitions and serialization
@@ -107,31 +119,56 @@ pip install -r requirements.txt
 
 ## Running the system
 
-Open separate terminals for each component. Make sure the virtual environment
-is activated in each one.
+A single command starts everything — the TCP server, WebSocket server, HTTP server,
+four real sensor clients and the automatic anomaly injector:
 
-**Start the server:**
 ```bash
 python -m server.server
 ```
+Once running, open the dashboard in your browser:
 
-**Connect a real sensor client** (reads actual system metrics):
+http://localhost:8080
+
+The dashboard connects automatically via WebSocket and begins displaying live data.
+No additional setup is required.
+
+---
+
+## Dashboard
+
+The dashboard provides a real-time view of the system with no page reloads:
+
+**NODES view** - live telemetry charts per sensor with a 30-point sliding window.
+Anomalous readings appear as red dots on the chart. The left panel shows all connected
+sensors and their current values, colour-coded by threshold proximity.
+
+**ALERTS view** - full-screen anomaly feed showing every detection in real time,
+with timestamp, sensor ID, value, pipeline stage and reason. Colour-coded by stage:
+red for Validator, orange for ThresholdDetector, yellow for ZScoreDetector.
+
+**Sensor control** - start and stop simulated sensor clients directly from the
+dashboard without touching the terminal. Supports all four sensor types and anomaly
+injection mode.
+
+---
+
+## Manual sensor clients
+
+Additional clients can be launched from the terminal or from the dashboard:
+
 ```bash
+# Real system metrics
 python -m client.psutil_client
-```
 
-**Connect a simulated sensor client:**
-```bash
+# Simulated normal readings
 python -m client.simulation_client <sensor_id> <sensor_type>
+
+# Simulated anomalous readings
+python -m client.simulation_client <sensor_id> <sensor_type> inject
 
 # Examples
 python -m client.simulation_client cpu_sim cpu
-python -m client.simulation_client ram_sim ram
-```
-
-**Inject anomalous values** (triggers the detection pipeline):
-```bash
-python -m client.simulation_client cpu_sim cpu inject
+python -m client.simulation_client ram_sim ram inject
 ```
 
 **Available sensor types:** `cpu`, `ram`, `disk`, `network`
@@ -145,11 +182,14 @@ All tuneable parameters live in `shared/config.py`:
 | Parameter | Default | Description |
 |---|---|---|
 | `HOST` | `127.0.0.1` | Server host |
-| `PORT` | `9999` | Server port |
+| `PORT` | `9999` | TCP server port |
+| `WS_PORT` | `8765` | WebSocket server port |
+| `HTTP_PORT` | `8080` | Dashboard HTTP port |
 | `WINDOW_SIZE` | `10` | Readings in the Z-score sliding window |
 | `ZSCORE_THRESHOLD` | `3` | Standard deviations to flag a statistical anomaly |
 | `ALERT_THRESHOLDS` | see config | Per-sensor alert ranges |
 | `PHYSICAL_LIMITS` | see config | Per-sensor physical boundaries |
+| `ZSCORE_EXCLUDED` | `["network"]` | Sensor types excluded from Z-score detection |
 
 ---
 
@@ -162,3 +202,4 @@ All tuneable parameters live in `shared/config.py`:
 - Shared secret authentication with SHA-256 hashing
 - Clean separation between transport, domain and notification layers
 - Structured logging across all modules
+- Real-time browser dashboard via WebSocket
